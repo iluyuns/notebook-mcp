@@ -3,16 +3,15 @@ package main
 import (
 	"context"
 	"log"
-	"net/http"
 	"time"
 
 	"notebook-mcp/internal/config"
 	"notebook-mcp/internal/db"
-	"notebook-mcp/internal/httpapi"
 	"notebook-mcp/internal/mcpserver"
 	"notebook-mcp/internal/oauth"
 	"notebook-mcp/internal/repo"
 	"notebook-mcp/internal/service"
+	"notebook-mcp/internal/web"
 
 	"github.com/gin-gonic/gin"
 )
@@ -28,26 +27,29 @@ func main() {
 	defer pg.Close()
 
 	noteRepo := repo.NewNoteRepo(pg)
+	userRepo := repo.NewUserRepo(pg)
+	if cfg.InitialInviteCode != "" {
+		if err := userRepo.EnsureInviteCode(ctx, cfg.InitialInviteCode, cfg.InitialInviteMaxUses); err != nil {
+			log.Fatalf("ensure invite code: %v", err)
+		}
+	}
 	noteSvc := service.NewNoteService(noteRepo, cfg.DefaultPerPage)
 	mcpHandler := mcpserver.New(noteSvc)
 	oauthSvc := oauth.NewService(oauth.Config{
 		IssuerURL:      cfg.OAuthIssuerURL,
 		ClientID:       cfg.OAuthClientID,
-		User:           cfg.OAuthUser,
-		Password:       cfg.OAuthPassword,
 		CodeTTL:        time.Duration(cfg.CodeTTL) * time.Second,
 		AccessTokenTTL: time.Duration(cfg.AccessTokenTTL) * time.Second,
-	})
+	}, userRepo)
 
 	r := gin.Default()
-	r.GET("/health", func(c *gin.Context) {
-		c.String(http.StatusOK, "ok")
+	web.Register(r, web.Deps{
+		NoteSvc:    noteSvc,
+		UserRepo:   userRepo,
+		OAuthSvc:   oauthSvc,
+		MCPHandler: gin.WrapH(mcpHandler),
+		MCPPath:    cfg.MCPPath,
 	})
-	httpapi.NewHandler(noteSvc).Register(r)
-	oauth.NewHandler(oauthSvc).Register(r)
-	mcpRoute := r.Group(cfg.MCPPath)
-	mcpRoute.Use(oauth.BearerAuthMiddleware(oauthSvc))
-	mcpRoute.Any("", gin.WrapH(mcpHandler))
 
 	addr := ":" + cfg.Port
 	log.Printf("notebook mcp service listening on %s", addr)

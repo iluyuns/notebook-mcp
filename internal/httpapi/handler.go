@@ -1,6 +1,7 @@
 package httpapi
 
 import (
+	"errors"
 	"net/http"
 
 	"notebook-mcp/internal/model"
@@ -17,10 +18,9 @@ func NewHandler(svc *service.NoteService) *Handler {
 	return &Handler{svc: svc}
 }
 
-func (h *Handler) Register(r *gin.Engine) {
-	v1 := r.Group("/api/v1")
-	v1.POST("/notes", h.saveNote)
-	v1.GET("/notes/search", h.searchNotes)
+func (h *Handler) Register(r gin.IRouter) {
+	r.POST("/notes", h.saveNote)
+	r.GET("/notes/search", h.searchNotes)
 }
 
 func (h *Handler) saveNote(c *gin.Context) {
@@ -31,6 +31,10 @@ func (h *Handler) saveNote(c *gin.Context) {
 	}
 	note, err := h.svc.Save(c.Request.Context(), req)
 	if err != nil {
+		if errors.Is(err, service.ErrUnauthorized) {
+			c.JSON(http.StatusUnauthorized, gin.H{"error": err.Error()})
+			return
+		}
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
@@ -45,6 +49,10 @@ func (h *Handler) searchNotes(c *gin.Context) {
 	}
 	notes, err := h.svc.Search(c.Request.Context(), req)
 	if err != nil {
+		if errors.Is(err, service.ErrUnauthorized) {
+			c.JSON(http.StatusUnauthorized, gin.H{"error": err.Error()})
+			return
+		}
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}

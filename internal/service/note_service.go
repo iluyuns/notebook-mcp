@@ -2,12 +2,17 @@ package service
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"strings"
 
+	"notebook-mcp/internal/authctx"
 	"notebook-mcp/internal/model"
 	"notebook-mcp/internal/repo"
 )
+
+// ErrUnauthorized 表示请求未携带有效用户上下文（通常应先经 Bearer 鉴权）。
+var ErrUnauthorized = errors.New("unauthorized")
 
 type NoteService struct {
 	repo             *repo.NoteRepo
@@ -22,6 +27,10 @@ func NewNoteService(repo *repo.NoteRepo, defaultQuerySize int) *NoteService {
 }
 
 func (s *NoteService) Save(ctx context.Context, req model.SaveNoteRequest) (model.Note, error) {
+	userID, ok := authctx.UserID(ctx)
+	if !ok || userID <= 0 {
+		return model.Note{}, ErrUnauthorized
+	}
 	req.Content = strings.TrimSpace(req.Content)
 	if req.Content == "" {
 		return model.Note{}, fmt.Errorf("content is required")
@@ -32,10 +41,14 @@ func (s *NoteService) Save(ctx context.Context, req model.SaveNoteRequest) (mode
 	if req.Metadata == nil {
 		req.Metadata = map[string]any{}
 	}
-	return s.repo.Save(ctx, req)
+	return s.repo.Save(ctx, userID, req)
 }
 
 func (s *NoteService) Search(ctx context.Context, req model.SearchNotesRequest) ([]model.Note, error) {
+	userID, ok := authctx.UserID(ctx)
+	if !ok || userID <= 0 {
+		return nil, ErrUnauthorized
+	}
 	req.Keyword = strings.TrimSpace(req.Keyword)
 	if req.Keyword == "" {
 		return nil, fmt.Errorf("keyword is required")
@@ -46,7 +59,7 @@ func (s *NoteService) Search(ctx context.Context, req model.SearchNotesRequest) 
 	if req.NoteType != "" && !isValidNoteType(req.NoteType) {
 		return nil, fmt.Errorf("invalid note_type: %s", req.NoteType)
 	}
-	return s.repo.Search(ctx, req)
+	return s.repo.Search(ctx, userID, req)
 }
 
 func (s *NoteService) SaveByInstruction(

@@ -1,6 +1,7 @@
 package oauth
 
 import (
+	"context"
 	"crypto/rand"
 	"crypto/sha256"
 	"encoding/base64"
@@ -9,25 +10,29 @@ import (
 	"strings"
 	"sync"
 	"time"
+
+	"notebook-mcp/internal/repo"
+
+	"golang.org/x/crypto/bcrypt"
 )
 
 type Config struct {
 	IssuerURL      string
 	ClientID       string
-	User           string
-	Password       string
 	CodeTTL        time.Duration
 	AccessTokenTTL time.Duration
 }
 
 type Service struct {
 	cfg    Config
+	users  *repo.UserRepo
 	mu     sync.RWMutex
 	codes  map[string]authCode
 	tokens map[string]accessToken
 }
 
 type authCode struct {
+	UserID              int64
 	CodeChallenge       string
 	CodeChallengeMethod string
 	RedirectURI         string
@@ -36,27 +41,42 @@ type authCode struct {
 }
 
 type accessToken struct {
+	UserID    int64
 	ClientID  string
 	ExpiresAt time.Time
 }
 
-func NewService(cfg Config) *Service {
+func NewService(cfg Config, users *repo.UserRepo) *Service {
 	return &Service{
 		cfg:    cfg,
+		users:  users,
 		codes:  make(map[string]authCode),
 		tokens: make(map[string]accessToken),
 	}
 }
 
-func (s *Service) ValidateLogin(user, pass string) bool {
-	return user == s.cfg.User && pass == s.cfg.Password
+func (s *Service) ValidateLogin(ctx context.Context, username, password string) (int64, bool) {
+	if s.users == nil {
+		return 0, false
+	}
+	id, hash, err := s.users.GetAuthByUsername(ctx, username)
+	if err != nil {
+		return 0, false
+	}
+	if bcrypt.CompareHashAndPassword([]byte(hash), []byte(password)) != nil {
+		return 0, false
+	}
+	return id, true
 }
 
 func (s *Service) ClientID() string {
 	return s.cfg.ClientID
 }
 
-func (s *Service) IssueCode(clientID, redirectURI, codeChallenge, method string) (string, error) {
+func (s *Service) IssueCode(userID int64, clientID, redirectURI, codeChallenge, method string) (string, error) {
+	if userID <= 0 {
+		return "", fmt.Errorf("invalid user")
+	}
 	if strings.TrimSpace(clientID) != s.cfg.ClientID {
 		return "", fmt.Errorf("invalid client_id")
 	}
@@ -80,6 +100,7 @@ func (s *Service) IssueCode(clientID, redirectURI, codeChallenge, method string)
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	s.codes[code] = authCode{
+		UserID:              userID,
 		CodeChallenge:       codeChallenge,
 		CodeChallengeMethod: method,
 		RedirectURI:         redirectURI,
@@ -120,26 +141,41 @@ func (s *Service) ExchangeCode(code, codeVerifier, clientID, redirectURI string)
 	}
 	ttl := int(s.cfg.AccessTokenTTL.Seconds())
 	s.tokens[token] = accessToken{
+		UserID:    data.UserID,
 		ClientID:  clientID,
 		ExpiresAt: time.Now().Add(s.cfg.AccessTokenTTL),
 	}
 	return token, ttl, nil
 }
 
-func (s *Service) VerifyAccessToken(token string) bool {
+func (s *Service) lookupAccessToken(token string) (accessToken, bool) {
 	s.mu.RLock()
 	data, ok := s.tokens[token]
 	s.mu.RUnlock()
 	if !ok {
-		return false
+		return accessToken{}, false
 	}
 	if time.Now().After(data.ExpiresAt) {
 		s.mu.Lock()
 		delete(s.tokens, token)
 		s.mu.Unlock()
-		return false
+		return accessToken{}, false
 	}
-	return true
+	return data, true
+}
+
+func (s *Service) VerifyAccessToken(token string) bool {
+	_, ok := s.lookupAccessToken(token)
+	return ok
+}
+
+// UserIDFromAccessToken 校验 access token 并返回关联用户 ID。
+func (s *Service) UserIDFromAccessToken(token string) (int64, bool) {
+	data, ok := s.lookupAccessToken(token)
+	if !ok {
+		return 0, false
+	}
+	return data.UserID, true
 }
 
 func (s *Service) Metadata() map[string]any {

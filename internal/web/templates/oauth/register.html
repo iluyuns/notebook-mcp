@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>注册 — Notebook MCP</title>
+</head>
+
+<body>
+  <h3>注册账号</h3>
+  {{if .Success}}<p style="color:#060">注册成功，请返回 Cursor 重新发起 OAuth 授权。</p>{{end}}
+  {{if .Error}}<p style="color:#c00">{{.Error}}</p>{{end}}
+  {{if not .Success}}
+  <form method="post" action="/register">
+    <div><label>用户名 <input name="username" autocomplete="username" required minlength="3" maxlength="32"
+          pattern="[a-zA-Z0-9_]+" title="3-32 位字母、数字或下划线" /></label></div>
+    <div><label>密码 <input type="password" name="password" autocomplete="new-password" required minlength="8" /></label>
+    </div>
+    <div><label>邀请码 <input name="invite_code" autocomplete="off" required /></label></div>
+    <button type="submit">注册</button>
+  </form>
+  {{end}}
+  <p><a href="/.well-known/oauth-authorization-server">OAuth 元数据</a> · <a href="/">返回首页</a></p>
+</body>
+
+</html>

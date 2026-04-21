@@ -6,30 +6,30 @@ import (
 )
 
 type Config struct {
-	Port           string
-	PostgresDSN    string
-	MCPPath        string
-	DefaultPerPage int
-	OAuthIssuerURL string
-	OAuthClientID  string
-	OAuthUser      string
-	OAuthPassword  string
-	AccessTokenTTL int
-	CodeTTL        int
+	Port                 string
+	PostgresDSN          string
+	MCPPath              string
+	DefaultPerPage       int
+	OAuthIssuerURL       string
+	OAuthClientID        string
+	InitialInviteCode    string
+	InitialInviteMaxUses int
+	AccessTokenTTL       int
+	CodeTTL              int
 }
 
 func Load() Config {
 	return Config{
-		Port:           getEnv("PORT", "8088"),
-		PostgresDSN:    getEnv("POSTGRES_DSN", ""),
-		MCPPath:        getEnv("MCP_PATH", "/mcp"),
-		DefaultPerPage: getEnvInt("DEFAULT_QUERY_LIMIT", 20),
-		OAuthIssuerURL: getEnv("OAUTH_ISSUER_URL", "http://localhost:8088"),
-		OAuthClientID:  getEnv("OAUTH_CLIENT_ID", "cursor-private-notebook"),
-		OAuthUser:      getEnv("OAUTH_USER", ""),
-		OAuthPassword:  getEnv("OAUTH_PASSWORD", ""),
-		AccessTokenTTL: getEnvInt("OAUTH_ACCESS_TOKEN_TTL_SECONDS", 3600),
-		CodeTTL:        getEnvInt("OAUTH_CODE_TTL_SECONDS", 300),
+		Port:                 getEnv("PORT", "8088"),
+		PostgresDSN:          getEnv("POSTGRES_DSN", ""),
+		MCPPath:              getEnv("MCP_PATH", "/mcp"),
+		DefaultPerPage:       getEnvInt("DEFAULT_QUERY_LIMIT", 20),
+		OAuthIssuerURL:       getEnv("OAUTH_ISSUER_URL", "http://localhost:8088"),
+		OAuthClientID:        getEnv("OAUTH_CLIENT_ID", "cursor-private-notebook"),
+		InitialInviteCode:    getEnv("INITIAL_INVITE_CODE", ""),
+		InitialInviteMaxUses: getEnvInt("INITIAL_INVITE_MAX_USES", 1000),
+		AccessTokenTTL:       getEnvInt("OAUTH_ACCESS_TOKEN_TTL_SECONDS", 3600),
+		CodeTTL:              getEnvInt("OAUTH_CODE_TTL_SECONDS", 300),
 	}
 }
 

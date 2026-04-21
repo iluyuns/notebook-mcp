@@ -4,6 +4,8 @@ import (
 	"net/http"
 	"strings"
 
+	"notebook-mcp/internal/authctx"
+
 	"github.com/gin-gonic/gin"
 )
 
@@ -19,10 +21,13 @@ func BearerAuthMiddleware(svc *Service) gin.HandlerFunc {
 			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "invalid authorization"})
 			return
 		}
-		if !svc.VerifyAccessToken(strings.TrimSpace(parts[1])) {
+		token := strings.TrimSpace(parts[1])
+		userID, ok := svc.UserIDFromAccessToken(token)
+		if !ok {
 			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "invalid access token"})
 			return
 		}
+		c.Request = c.Request.WithContext(authctx.WithUserID(c.Request.Context(), userID))
 		c.Next()
 	}
 }

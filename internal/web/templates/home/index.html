@@ -1,0 +1,238 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Notebook MCP — 私人 AI 笔记本</title>
+  <style>
+    *,
+    *::before,
+    *::after {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    html,
+    body {
+      height: 100%;
+    }
+
+    body {
+      font-family: ui-sans-serif, system-ui, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+      color: #1a1033;
+      overflow-x: hidden;
+    }
+
+    .aurora {
+      position: fixed;
+      inset: 0;
+      z-index: 0;
+      background:
+        radial-gradient(ellipse 120% 80% at 20% 20%, rgba(255, 120, 200, 0.45) 0%, transparent 55%),
+        radial-gradient(ellipse 100% 70% at 80% 10%, rgba(120, 200, 255, 0.5) 0%, transparent 50%),
+        radial-gradient(ellipse 90% 60% at 50% 90%, rgba(180, 255, 200, 0.4) 0%, transparent 55%),
+        radial-gradient(ellipse 70% 50% at 70% 60%, rgba(255, 220, 120, 0.35) 0%, transparent 45%),
+        linear-gradient(160deg,
+          #0f0c29 0%,
+          #302b63 25%,
+          #24243e 50%,
+          #1a1a2e 75%,
+          #16213e 100%);
+    }
+
+    .rainbow-sheen {
+      position: fixed;
+      inset: -50%;
+      z-index: 1;
+      opacity: 0.65;
+      background: conic-gradient(from 0deg at 50% 50%,
+          #ff006e,
+          #8338ec,
+          #3a86ff,
+          #06ffa5,
+          #ffbe0b,
+          #fb5607,
+          #ff006e);
+      animation: spin-slow 28s linear infinite;
+      mix-blend-mode: screen;
+      filter: blur(80px);
+    }
+
+    .rainbow-sheen-2 {
+      position: fixed;
+      inset: -40%;
+      z-index: 1;
+      opacity: 0.4;
+      background: conic-gradient(from 180deg at 40% 40%,
+          #00f5ff,
+          #ff00ff,
+          #ffea00,
+          #00ff88,
+          #00f5ff);
+      animation: spin-slow-reverse 35s linear infinite;
+      mix-blend-mode: lighten;
+      filter: blur(100px);
+    }
+
+    @keyframes spin-slow {
+      to {
+        transform: rotate(360deg);
+      }
+    }
+
+    @keyframes spin-slow-reverse {
+      to {
+        transform: rotate(-360deg);
+      }
+    }
+
+    .noise {
+      position: fixed;
+      inset: 0;
+      z-index: 2;
+      opacity: 0.04;
+      pointer-events: none;
+      background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+    }
+
+    .wrap {
+      position: relative;
+      z-index: 3;
+      min-height: 100%;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 2rem 1.25rem 3rem;
+    }
+
+    .card {
+      max-width: 36rem;
+      width: 100%;
+      padding: 2.25rem 2rem;
+      border-radius: 1.5rem;
+      background: rgba(255, 255, 255, 0.12);
+      border: 1px solid rgba(255, 255, 255, 0.28);
+      box-shadow:
+        0 8px 32px rgba(31, 38, 135, 0.25),
+        inset 0 1px 0 rgba(255, 255, 255, 0.35);
+      backdrop-filter: blur(18px);
+      -webkit-backdrop-filter: blur(18px);
+      text-align: center;
+    }
+
+    .badge {
+      display: inline-block;
+      font-size: 0.75rem;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: rgba(255, 255, 255, 0.85);
+      margin-bottom: 1rem;
+      padding: 0.35rem 0.85rem;
+      border-radius: 999px;
+      background: linear-gradient(90deg, rgba(255, 100, 180, 0.35), rgba(100, 200, 255, 0.35));
+      border: 1px solid rgba(255, 255, 255, 0.25);
+    }
+
+    h1 {
+      font-size: clamp(1.65rem, 4vw, 2.15rem);
+      font-weight: 700;
+      line-height: 1.25;
+      margin-bottom: 0.75rem;
+      background: linear-gradient(120deg, #fff 0%, #e0d4ff 40%, #a5f3fc 70%, #fef08a 100%);
+      -webkit-background-clip: text;
+      background-clip: text;
+      color: transparent;
+      text-shadow: 0 0 40px rgba(200, 180, 255, 0.35);
+    }
+
+    .lead {
+      font-size: 1rem;
+      line-height: 1.7;
+      color: rgba(255, 255, 255, 0.82);
+      margin-bottom: 1.5rem;
+    }
+
+    .sub {
+      font-size: 0.9rem;
+      color: rgba(255, 255, 255, 0.55);
+      margin-bottom: 1.75rem;
+      line-height: 1.6;
+    }
+
+    .actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.75rem;
+      justify-content: center;
+    }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      padding: 0.65rem 1.35rem;
+      border-radius: 999px;
+      font-size: 0.95rem;
+      text-decoration: none;
+      transition: transform 0.2s ease, box-shadow 0.2s ease;
+    }
+
+    .btn:hover {
+      transform: translateY(-2px);
+    }
+
+    .btn-primary {
+      color: #1a0b2e;
+      font-weight: 600;
+      background: linear-gradient(135deg, #ffecd2 0%, #fcb69f 50%, #ff9a9e 100%);
+      box-shadow: 0 4px 24px rgba(255, 180, 200, 0.45);
+    }
+
+    .btn-ghost {
+      color: rgba(255, 255, 255, 0.92);
+      border: 1px solid rgba(255, 255, 255, 0.35);
+      background: rgba(255, 255, 255, 0.06);
+    }
+
+    footer {
+      margin-top: 2.5rem;
+      font-size: 0.8rem;
+      color: rgba(255, 255, 255, 0.4);
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+
+      .rainbow-sheen,
+      .rainbow-sheen-2 {
+        animation: none;
+        opacity: 0.35;
+      }
+    }
+  </style>
+</head>
+
+<body>
+  <div class="aurora" aria-hidden="true"></div>
+  <div class="rainbow-sheen" aria-hidden="true"></div>
+  <div class="rainbow-sheen-2" aria-hidden="true"></div>
+  <div class="noise" aria-hidden="true"></div>
+
+  <div class="wrap">
+    <main class="card">
+      <p class="badge">Private · MCP</p>
+      <h1>你的 AI 会话笔记本</h1>
+      <p class="lead">为 Cursor 与 AI 助手保存<strong>总结</strong>、<strong>上下文</strong>与<strong>灵感片段</strong>，需要时一键召回。</p>
+      <p class="sub">基于 OAuth 的私有 HTTP 服务 — 数据在你自己的库里，彩虹背后仍是你的笔记。</p>
+      <div class="actions">
+        <a class="btn btn-primary" href="/register">邀请码注册</a>
+        <a class="btn btn-ghost" href="/.well-known/oauth-authorization-server">OAuth 元数据</a>
+      </div>
+    </main>
+    <footer>Notebook MCP · AI Notebook for power users</footer>
+  </div>
+</body>
+
+</html>

@@ -12,6 +12,7 @@ const (
 
 type Note struct {
 	ID                int64          `json:"id"`
+	UserID            string         `json:"user_id,omitempty"`
 	NoteType          NoteType       `json:"note_type"`
 	Title             string         `json:"title"`
 	Content           string         `json:"content"`
